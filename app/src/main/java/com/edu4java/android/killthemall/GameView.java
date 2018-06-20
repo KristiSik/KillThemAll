@@ -32,6 +32,8 @@ class GameView extends SurfaceView {
     private boolean gameOver = false;
     private boolean allSpritesAdded = false;
     private Star star;
+    private long timeGameStarted;
+
 
     public GameView(Context context) {
         super(context);
@@ -60,6 +62,7 @@ class GameView extends SurfaceView {
         });
         bmpBlood = BitmapFactory.decodeResource(getResources(), R.drawable.blood1);
         bmpStar = BitmapFactory.decodeResource(getResources(), R.drawable.star);
+        timeGameStarted = System.currentTimeMillis();
     }
 
     @Override
@@ -71,6 +74,7 @@ class GameView extends SurfaceView {
             gameLoopThread.start();
             createSprites();
             gameOver = false;
+            timeGameStarted = System.currentTimeMillis();
         }
         if (allSpritesAdded) {
             goodGuy.setSpeed(event.getX(), event.getY());
@@ -96,9 +100,9 @@ class GameView extends SurfaceView {
     }
 
     private boolean isCollision(Rect sprite1, Rect sprite2) {
-        if (sprite1.intersect(sprite2))
+        if (System.currentTimeMillis() - timeGameStarted >= 400)
         {
-            return true;
+            return sprite1.intersect(sprite2);
         } else {
             return false;
         }
