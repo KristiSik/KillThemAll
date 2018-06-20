@@ -60,8 +60,8 @@ public class Sprite {
         int direction = (int) Math.round(dirDouble) % BMP_ROWS;
         return DIRECTION_TO_ANIMATION_MAP[direction];
     }
-    public boolean isCollition(float x2, float y2) {
-        return x2 > x && x2 < x + width && y2 > y && y2 < y + height;
+    public Rect getRect() {
+        return new Rect(x - width/2, y - height/2, x + width/2, y + width/2);
     }
     public int getX(){
         return x;

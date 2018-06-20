@@ -39,8 +39,11 @@ public class Star {
     public void onDraw(Canvas canvas) {
         update();
         Rect src = new Rect(currentFrame * width, 0, (currentFrame + 1) * width, height);
-        Rect dst = new Rect(x - width/2, y - height/2, x + width, y + height);
+        Rect dst = new Rect(x - width/2, y - height/2, x + width/2, y + height/2);
         canvas.drawBitmap(bmp, src, dst, null);
+    }
+    public Rect getRect() {
+        return new Rect(x - (int) Math.round((width/2) * 0.7), y - (int) Math.round((height/2) * 0.7), x + (int) Math.round((width/2) * 0.7), y + (int) Math.round((height/2) * 0.7));
     }
     public boolean getVisible() {
         return visible;

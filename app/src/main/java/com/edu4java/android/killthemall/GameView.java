@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.media.AudioAttributes;
 import android.media.SoundPool;
@@ -16,6 +17,7 @@ import android.view.SurfaceView;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 class GameView extends SurfaceView {
     private final SurfaceHolder holder;
@@ -23,9 +25,9 @@ class GameView extends SurfaceView {
     private final Bitmap bmpStar;
     private GameLoopThread gameLoopThread;
     private GameSound gameSound;
-    private List<Sprite> sprites = new ArrayList<Sprite>();
+    private List<Sprite> sprites;
     private Sprite goodGuy;
-    private List<TempSprite> temps = new ArrayList<TempSprite>();
+    private List<TempSprite> temps;
     private long lastClick;
     private boolean gameOver = false;
     private boolean allSpritesAdded = false;
@@ -62,7 +64,17 @@ class GameView extends SurfaceView {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        goodGuy.setSpeed(event.getX(), event.getY());
+        if (gameOver && event.getAction() == MotionEvent.ACTION_DOWN) {
+            allSpritesAdded = false;
+            gameLoopThread = new GameLoopThread(this);
+            gameLoopThread.setRunning(true);
+            gameLoopThread.start();
+            createSprites();
+            gameOver = false;
+        }
+        if (allSpritesAdded) {
+            goodGuy.setSpeed(event.getX(), event.getY());
+        }
         if (event.getAction() == MotionEvent.ACTION_UP && event.getEventTime() - event.getDownTime() <= 500) {
             star = new Star(this, bmpStar, goodGuy.getX(), goodGuy.getY(), goodGuy.getXSpeed()*3, goodGuy.getYSpeed()*3);
             gameSound.playSound(GameSound.THROWN_SHURIKEN);
@@ -72,12 +84,24 @@ class GameView extends SurfaceView {
 
     private void createSprites() {
         int[] badGuyResources = {R.drawable.bad1, R.drawable.bad2, R.drawable.bad3, R.drawable.bad4, R.drawable.bad5, R.drawable.bad6};
+        int[] goodGuyResources = {R.drawable.good1, R.drawable.good2, R.drawable.good3, R.drawable.good4, R.drawable.good5, R.drawable.good6};
+        sprites = new ArrayList<>();
+        temps = new ArrayList<>();
         for(int resource : badGuyResources) {
             sprites.add(createSprite(resource, false));
         }
-        goodGuy = createSprite(R.drawable.good1, true);
+        goodGuy = createSprite(goodGuyResources[new Random().nextInt(goodGuyResources.length - 1)], true);
         sprites.add(goodGuy);
         allSpritesAdded = true;
+    }
+
+    private boolean isCollision(Rect sprite1, Rect sprite2) {
+        if (sprite1.intersect(sprite2))
+        {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     private Sprite createSprite(int resource, boolean good) {
@@ -87,52 +111,51 @@ class GameView extends SurfaceView {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        canvas.drawColor(Color.BLACK);
+        if (canvas != null && allSpritesAdded) {
+            canvas.drawColor(Color.BLACK);
+            if (star != null && star.getVisible())
+                star.onDraw(canvas);
 
-        if (star != null && star.getVisible())
-            star.onDraw(canvas);
-
-        List<Sprite> spritesToRemove = new ArrayList<Sprite>();
-        for (Sprite spriteB : sprites) {
-            if (!spriteB.goodOne) {
-                if (goodGuy.isCollition(spriteB.getX(), spriteB.getY())) {
-                    spritesToRemove.add(goodGuy);
-                    gameSound.playSound(GameSound.GOOD_GUY_KILLED);
-                    spritesToRemove.add(spriteB);
-                }
-            }
-        }
-        if (star != null && star.getVisible()) {
+            List<Sprite> spritesToRemove = new ArrayList<Sprite>();
             for (Sprite spriteB : sprites) {
                 if (!spriteB.goodOne) {
-                    if (spriteB.isCollition(star.getX(), star.getY())) {
+                     if (isCollision(goodGuy.getRect(), spriteB.getRect())) {
+                        spritesToRemove.add(goodGuy);
+                        gameSound.playSound(GameSound.GOOD_GUY_KILLED);
                         spritesToRemove.add(spriteB);
-                        star = null;
-                        gameSound.playSound(GameSound.BAD_GUY_KILLED);
-                        break;
                     }
                 }
             }
-        }
-        for (Sprite sprite : spritesToRemove) {
-            temps.add(new TempSprite(temps, this, sprite.getX(), sprite.getY(), bmpBlood));
-            sprites.remove(sprite);
-        }
-
-        int goodSpriteNo = 0;
-        int badSpriteNo = 0;
-        for (int i = temps.size() - 1; i >= 0; i--) {
-            temps.get(i).onDraw(canvas);
-        }
-        for(Sprite sprite : sprites) {
-            sprite.onDraw(canvas);
-            if (sprite.goodOne) {
-                goodSpriteNo++;
-            } else {
-                badSpriteNo++;
+            if (star != null && star.getVisible()) {
+                for (Sprite spriteB : sprites) {
+                    if (!spriteB.goodOne) {
+                        if (isCollision(spriteB.getRect(), star.getRect())) {
+                            spritesToRemove.add(spriteB);
+                            star = null;
+                            gameSound.playSound(GameSound.BAD_GUY_KILLED);
+                            break;
+                        }
+                    }
+                }
             }
-        }
-        if (allSpritesAdded) {
+            for (Sprite sprite : spritesToRemove) {
+                temps.add(new TempSprite(temps, this, sprite.getX(), sprite.getY(), bmpBlood));
+                sprites.remove(sprite);
+            }
+
+            int goodSpriteNo = 0;
+            int badSpriteNo = 0;
+            for (int i = temps.size() - 1; i >= 0; i--) {
+                temps.get(i).onDraw(canvas);
+            }
+            for(Sprite sprite : sprites) {
+                sprite.onDraw(canvas);
+                if (sprite.goodOne) {
+                    goodSpriteNo++;
+                } else {
+                    badSpriteNo++;
+                }
+            }
             if (goodSpriteNo == 0 || badSpriteNo == 0) {
                 gameOver = true;
                 gameLoopThread.setRunning(false);
